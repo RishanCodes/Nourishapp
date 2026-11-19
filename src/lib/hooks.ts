@@ -23,12 +23,16 @@ export function useThemeEffect() {
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
-      const dark = theme === 'dark' || (theme === 'system' && mq.matches);
+      // In 'system' mode, an explicit theme from a host page (data-theme on <html>) wins over the OS setting.
+      const host = document.documentElement.getAttribute('data-theme');
+      const dark = theme === 'dark' || (theme === 'system' && (host ? host === 'dark' : mq.matches));
       document.documentElement.classList.toggle('dark', dark);
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#101210' : '#f4f2ec');
     };
     apply();
     mq.addEventListener('change', apply);
-    return () => mq.removeEventListener('change', apply);
+    const mo = new MutationObserver(apply);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => { mq.removeEventListener('change', apply); mo.disconnect(); };
   }, [theme]);
 }

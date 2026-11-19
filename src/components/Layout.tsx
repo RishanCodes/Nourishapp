@@ -1,6 +1,6 @@
 import { BookOpen, CalendarDays, Home, LayoutGrid, Package, Settings, ShoppingBasket, User } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { navigate, type Route } from '../lib/router';
+import { hrefFor, navigate, type Route } from '../lib/router';
 import { useGrocery } from '../lib/hooks';
 import { useStore } from '../store/store';
 import { Dialog, cx } from './ui';
@@ -43,7 +43,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
         <Logo className="px-2" />
         <nav className="mt-8 flex flex-col gap-1" aria-label="Main">
           {NAV.map(({ route: r, label, icon: Icon }) => (
-            <a key={r} href={`#/${r}`} onClick={(e) => { e.preventDefault(); navigate(r); }} aria-current={route === r ? 'page' : undefined}
+            <a key={r} href={hrefFor(r)} onClick={(e) => { e.preventDefault(); navigate(r); }} aria-current={route === r ? 'page' : undefined}
               className={cx('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                 route === r ? 'bg-white text-sage-800 shadow-soft dark:bg-white/10 dark:text-sage-200' : 'text-ink-700 hover:bg-white/70 dark:text-sand-200/80 dark:hover:bg-white/5')}>
               <Icon size={18} strokeWidth={1.8} />
@@ -59,7 +59,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
       </aside>
 
       {/* Mobile header */}
-      <header className="no-print sticky top-0 z-30 flex items-center justify-between border-b border-sand-200/80 bg-sand-100/85 px-4 py-3 backdrop-blur dark:border-white/5 dark:bg-ink-950/85 lg:hidden">
+      <header style={{ top: 'env(safe-area-inset-top, 0px)' }} className="no-print sticky top-0 z-30 flex items-center justify-between border-b border-sand-200/80 bg-sand-100/85 px-4 py-3 backdrop-blur dark:border-white/5 dark:bg-ink-950/85 lg:hidden">
         <Logo />
         {isDemo && <span className="rounded-full bg-clay-100 px-2.5 py-1 text-[11px] font-medium text-clay-600 dark:bg-clay-500/15 dark:text-clay-300">Demo</span>}
       </header>
@@ -73,7 +73,7 @@ export function Layout({ route, children }: { route: Route; children: ReactNode 
             const n = NAV.find((x) => x.route === r)!;
             const Icon = n.icon;
             return (
-              <a key={r} href={`#/${r}`} onClick={(e) => { e.preventDefault(); navigate(r); }} aria-current={route === r ? 'page' : undefined}
+              <a key={r} href={hrefFor(r)} onClick={(e) => { e.preventDefault(); navigate(r); }} aria-current={route === r ? 'page' : undefined}
                 className={cx('relative flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium', route === r ? 'text-sage-700 dark:text-sage-300' : 'text-ink-700/60 dark:text-sand-200/50')}>
                 <Icon size={21} strokeWidth={route === r ? 2.2 : 1.8} />
                 {SHORT[r]}

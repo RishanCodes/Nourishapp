@@ -2,6 +2,7 @@ import { Download, Moon, PlayCircle, Ruler, Sun, Trash2, Upload } from 'lucide-r
 import { useRef, useState } from 'react';
 import { Dialog, Notice, PageHeader, Segmented } from '../components/ui';
 import { navigate } from '../lib/router';
+import { IS_ARTIFACT, copyText } from '../lib/env';
 import { useStore } from '../store/store';
 
 export default function Settings() {
@@ -10,7 +11,15 @@ export default function Settings() {
   const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null);
   const [confirm, setConfirm] = useState<'delete' | 'demo' | null>(null);
 
-  const doExport = () => {
+  const [backup, setBackup] = useState<string | null>(null);
+  const [paste, setPaste] = useState('');
+  const doExport = async () => {
+    if (IS_ARTIFACT) {
+      const json = exportData();
+      if (await copyText(json)) setMsg({ tone: 'ok', text: 'Backup copied to your clipboard. Paste it into a note or file and keep it private: it includes any health details you entered.' });
+      else setBackup(json);
+      return;
+    }
     const url = URL.createObjectURL(new Blob([exportData()], { type: 'application/json' }));
     const a = Object.assign(document.createElement('a'), { href: url, download: `nourish-backup-${new Date().toISOString().slice(0, 10)}.json` });
     document.body.appendChild(a); a.click(); a.remove();
@@ -41,11 +50,12 @@ export default function Settings() {
           <Row title="Profile & dietary preferences" hint="Edit your details, diet, allergies and goals.">
             <button className="btn-secondary btn-sm" onClick={() => navigate('profile')}>Edit profile</button>
           </Row>
-          <Row icon={<Download size={18} />} title="Export data" hint="Download everything as a JSON backup.">
-            <button className="btn-secondary btn-sm" onClick={doExport}>Export</button>
+          <Row icon={<Download size={18} />} title="Export data" hint={IS_ARTIFACT ? 'Copy everything as a JSON backup.' : 'Download everything as a JSON backup.'}>
+            <button className="btn-secondary btn-sm" onClick={doExport}>{IS_ARTIFACT ? 'Copy backup' : 'Export'}</button>
           </Row>
           <Row icon={<Upload size={18} />} title="Import data" hint="Restore from a NOURISH backup file. Replaces current data.">
-            <button className="btn-secondary btn-sm" onClick={() => fileRef.current?.click()}>Import</button>
+            <button className="btn-secondary btn-sm" onClick={() => fileRef.current?.click()}>Choose file</button>
+            <button className="btn-ghost btn-sm" onClick={() => setBackup('')}>Paste backup</button>
             <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) doImport(f); e.target.value = ''; }} />
           </Row>
           <Row icon={<PlayCircle size={18} />} title={isDemo ? 'Reset demo data' : 'Load demo data'} hint="Replace your data with the sample teen basketball player profile.">
@@ -67,6 +77,23 @@ export default function Settings() {
         </section>
       </div>
 
+      <Dialog open={backup !== null} onClose={() => { setBackup(null); setPaste(''); }} title={backup ? 'Your backup' : 'Paste a backup'}
+        footer={backup ? <button className="btn-primary" onClick={() => setBackup(null)}>Done</button> : <>
+          <button className="btn-ghost" onClick={() => { setBackup(null); setPaste(''); }}>Cancel</button>
+          <button className="btn-primary" disabled={!paste.trim()} onClick={() => { const r = importData(paste); setMsg(r.ok ? { tone: 'ok', text: 'Data imported successfully.' } : { tone: 'warn', text: `Import failed: ${r.error}` }); setBackup(null); setPaste(''); }}>Import</button>
+        </>}>
+        {backup ? (
+          <>
+            <p className="mb-2 text-sm">Your browser blocked copying. Select all of the text below and copy it yourself.</p>
+            <textarea id="backup-out" readOnly className="input h-64 font-mono text-xs" value={backup} onFocus={(e) => e.currentTarget.select()} />
+          </>
+        ) : (
+          <>
+            <p className="mb-2 text-sm">Paste the text of a NOURISH backup. It replaces your current data.</p>
+            <textarea id="backup-in" className="input h-64 font-mono text-xs" value={paste} onChange={(e) => setPaste(e.target.value)} placeholder='{"app":"nourish", ...}' />
+          </>
+        )}
+      </Dialog>
       <Dialog open={confirm === 'delete'} onClose={() => setConfirm(null)} title="Delete all data?"
         footer={<><button className="btn-ghost" onClick={() => setConfirm(null)}>Cancel</button><button className="btn-danger" onClick={() => { resetAll(); setConfirm(null); navigate('dashboard'); }}>Delete everything</button></>}>
         <p className="text-sm">This permanently removes your profile, meal plans, saved plans, pantry and grocery progress from this browser. Consider exporting a backup first.</p>

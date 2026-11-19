@@ -6,6 +6,7 @@ import { formatShopping } from '../engine/units';
 import { Empty, Notice, PageHeader, Progress, Segmented, cx } from '../components/ui';
 import { useGrocery, useMoney } from '../lib/hooks';
 import { navigate } from '../lib/router';
+import { IS_ARTIFACT, copyText } from '../lib/env';
 import { useStore } from '../store/store';
 import type { Aisle } from '../types';
 
@@ -67,11 +68,17 @@ export default function Grocery() {
     <>
       <PageHeader title="Grocery List" subtitle="Calculated from this week's meal plan · updates automatically"
         actions={<>
-          <button className="btn-secondary" onClick={async () => { try { await navigator.clipboard.writeText(asText()); flash('Copied to clipboard'); } catch { download('nourish-grocery-list.txt', asText(), 'text/plain'); flash('Clipboard unavailable — downloaded instead'); } }}><ClipboardCopy size={16} /> Copy</button>
-          <button className="btn-secondary" onClick={() => window.print()}><Printer size={16} /> Print</button>
-          <div className="relative group">
+          <button className="btn-secondary" onClick={async () => {
+            if (await copyText(asText())) return flash('Grocery list copied');
+            if (IS_ARTIFACT) return flash('Copying was blocked by your browser');
+            download('nourish-grocery-list.txt', asText(), 'text/plain'); flash('Clipboard unavailable, so the list was downloaded');
+          }}><ClipboardCopy size={16} /> Copy list</button>
+          {IS_ARTIFACT ? (
+            <button className="btn-secondary" onClick={async () => flash((await copyText(csv())) ? 'CSV copied. Paste it into a spreadsheet.' : 'Copying was blocked by your browser')}><Download size={16} /> Copy as CSV</button>
+          ) : (<>
+            <button className="btn-secondary" onClick={() => window.print()}><Printer size={16} /> Print</button>
             <button className="btn-secondary" onClick={() => { download('nourish-grocery-list.csv', csv(), 'text/csv'); flash('Exported CSV'); }}><Download size={16} /> Export CSV</button>
-          </div>
+          </>)}
         </>} />
 
       {toast && <div role="status" className="no-print animate-in fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-900 px-4 py-2 text-sm text-white shadow-lg dark:bg-sand-100 dark:text-ink-900 lg:bottom-8">{toast}</div>}

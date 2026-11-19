@@ -66,7 +66,7 @@ export default function Onboarding() {
   const last = step === STEPS.length - 1;
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-10 border-b border-sand-200 bg-sand-100/90 backdrop-blur dark:border-white/5 dark:bg-ink-950/90">
+      <header style={{ top: 'env(safe-area-inset-top, 0px)' }} className="sticky top-0 z-10 border-b border-sand-200 bg-sand-100/90 backdrop-blur dark:border-white/5 dark:bg-ink-950/90">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-5 py-3">
           <Logo />
           <span className="text-xs muted">Step {step + 1} of {STEPS.length}</span>

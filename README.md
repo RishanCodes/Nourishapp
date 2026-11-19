@@ -12,6 +12,7 @@ npm run dev        # http://localhost:5173
 npm test           # 39 unit tests (engine + persistence)
 npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build
+npm run build:artifact   # single self-contained HTML page (dist-artifact/nourish.html) for hosting as an artifact
 ```
 
 The first time it opens, NOURISH shows onboarding. Use **Try the demo** to load the sample 17-year-old basketball player (6'1", 170 lb, five practices plus a game, CAD budget).
