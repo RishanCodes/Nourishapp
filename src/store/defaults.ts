@@ -42,7 +42,6 @@ export const DEFAULT_PROFILE: Profile = {
   leftovers: 'ok',
   slots: ['breakfast', 'lunch', 'pmSnack', 'dinner'],
   weeklyBudget: null,
-  currency: 'CAD',
   stores: '',
   priority: 'variety',
   portableLunch: false,
@@ -90,12 +89,11 @@ export const DEMO_PROFILE: Profile = {
   leftovers: 'ok',
   slots: ['breakfast', 'lunch', 'pmSnack', 'dinner'],
   weeklyBudget: 120,
-  currency: 'CAD',
   priority: 'variety',
   portableLunch: true,
-  showNumbers: false,
+  showNumbers: true,
 };
 
 export const EMPTY_GROCERY: GroceryState = { checked: {}, overrides: {}, removed: [], custom: [] };
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', units: 'metric', currency: 'CAD', notifications: false };
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', units: 'metric' };

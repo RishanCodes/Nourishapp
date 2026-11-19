@@ -1,7 +1,6 @@
-import { Bell, Download, Moon, PlayCircle, Ruler, Sun, Trash2, Upload, Wallet } from 'lucide-react';
+import { Download, Moon, PlayCircle, Ruler, Sun, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { CURRENCY_RATE } from '../engine/cost';
-import { Dialog, Notice, PageHeader, Segmented, Toggle } from '../components/ui';
+import { Dialog, Notice, PageHeader, Segmented } from '../components/ui';
 import { navigate } from '../lib/router';
 import { useStore } from '../store/store';
 
@@ -10,7 +9,6 @@ export default function Settings() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null);
   const [confirm, setConfirm] = useState<'delete' | 'demo' | null>(null);
-  const notifSupported = typeof window !== 'undefined' && 'Notification' in window;
 
   const doExport = () => {
     const url = URL.createObjectURL(new Blob([exportData()], { type: 'application/json' }));
@@ -23,13 +21,6 @@ export default function Settings() {
     if (f.size > 5_000_000) return setMsg({ tone: 'warn', text: 'That file is too large to be a NOURISH backup.' });
     const r = importData(await f.text());
     setMsg(r.ok ? { tone: 'ok', text: 'Data imported successfully.' } : { tone: 'warn', text: `Import failed: ${r.error}` });
-  };
-  const toggleNotifications = async (on: boolean) => {
-    if (!on) return updateSettings({ notifications: false });
-    if (!notifSupported) return setMsg({ tone: 'warn', text: 'This browser does not support notifications.' });
-    const perm = await Notification.requestPermission();
-    updateSettings({ notifications: perm === 'granted' });
-    if (perm !== 'granted') setMsg({ tone: 'warn', text: 'Notifications were blocked by the browser.' });
   };
 
   return (
@@ -44,15 +35,6 @@ export default function Settings() {
           <Row icon={<Ruler size={18} />} title="Measurement units" hint="Used for grocery quantities.">
             <Segmented size="sm" options={['metric', 'imperial'] as const} value={settings.units} onChange={(v) => updateSettings({ units: v })} labels={{ metric: 'Metric', imperial: 'Imperial' }} />
           </Row>
-          <Row icon={<Wallet size={18} />} title="Currency" hint="Prices are estimates converted from Canadian averages.">
-            <select className="input w-28 py-2" value={settings.currency} onChange={(e) => updateSettings({ currency: e.target.value })} aria-label="Currency">{Object.keys(CURRENCY_RATE).map((c) => <option key={c}>{c}</option>)}</select>
-          </Row>
-          <div className="flex gap-3.5 px-5 py-4">
-            <span className="mt-0.5 text-sage-600"><Bell size={18} /></span>
-            <div className="flex-1">
-              <Toggle checked={settings.notifications} onChange={toggleNotifications} label="Meal reminders" hint={notifSupported ? 'Shows a browser notification about 30 minutes before each planned meal while NOURISH is open. No server or push service is used.' : 'Not supported in this browser.'} />
-            </div>
-          </div>
         </section>
 
         <section className="card divide-y divide-sand-200 dark:divide-white/5">
@@ -79,7 +61,7 @@ export default function Settings() {
           <ul className="list-disc space-y-1.5 pl-5 muted">
             <li>All data is stored only in this browser's local storage. There is no account and nothing is sent to a server. Browser storage is not encrypted or medical-grade secure — anyone using this device profile could see it.</li>
             <li>Meal plans and the “adjust your plan” box use NOURISH's built-in rule-based engine, not an AI service.</li>
-            <li>Grocery prices are rough estimates from average Canadian prices; nutrition values are approximate, calculated from generic reference data.</li>
+            <li>All prices are in Canadian dollars. They are rough estimates based on average Canadian grocery prices; nutrition values are approximate, calculated from generic reference data.</li>
             <li>NOURISH is not a medical device and does not provide medical nutrition therapy. Follow your clinician's guidance for medical conditions and severe allergies.</li>
           </ul>
         </section>

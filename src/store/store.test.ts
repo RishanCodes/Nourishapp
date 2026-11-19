@@ -48,11 +48,27 @@ describe('persistence & data management', () => {
     expect(useStore.getState().plan!.days[0].dinner!.servings).toBe(0.5);
   });
 
-  it('demo profile never enables numeric targets', async () => {
+  it('under-18 users can turn nutrition numbers on and off', async () => {
     const { useStore } = await import('./store');
     useStore.getState().loadDemo();
-    useStore.getState().updateProfile({ showNumbers: true });
+    expect(useStore.getState().profile.age).toBe(17);
+    expect(useStore.getState().profile.showNumbers).toBe(true);
+    useStore.getState().updateProfile({ showNumbers: false });
     expect(useStore.getState().profile.showNumbers).toBe(false);
+    useStore.getState().updateProfile({ showNumbers: true });
+    expect(useStore.getState().profile.showNumbers).toBe(true);
+  });
+
+  it('is CAD-only: legacy currency fields are dropped on import', async () => {
+    const { useStore } = await import('./store');
+    useStore.getState().loadDemo();
+    const data = JSON.parse(useStore.getState().exportData());
+    data.data.profile.currency = 'USD';
+    data.data.settings.currency = 'USD';
+    data.data.settings.notifications = true;
+    expect(useStore.getState().importData(JSON.stringify(data)).ok).toBe(true);
+    expect('currency' in useStore.getState().profile).toBe(false);
+    expect(useStore.getState().settings).toEqual({ theme: 'system', units: 'metric' });
   });
 
   it('exports and re-imports data; rejects invalid files', async () => {

@@ -77,7 +77,9 @@ const initialData = (): PersistedData => ({
 
 /** Merge a possibly-partial or older profile with defaults and sanitise values. */
 export function sanitizeProfile(p: Partial<Profile>): Profile {
-  const merged = { ...DEFAULT_PROFILE, ...p } as Profile;
+  const { currency: _legacyCurrency, ...rest } = p as Partial<Profile> & { currency?: unknown }; // NOURISH is CAD-only
+  void _legacyCurrency;
+  const merged = { ...DEFAULT_PROFILE, ...rest } as Profile;
   const num = (v: unknown, min: number, max: number): number | null => {
     const n = typeof v === 'string' ? Number(v) : (v as number);
     return typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max ? n : null;
@@ -97,8 +99,6 @@ export function sanitizeProfile(p: Partial<Profile>): Profile {
   if (merged.diet.length > 1) merged.diet = merged.diet.filter((d) => d !== 'omnivore');
   if (!merged.slots.length) merged.slots = ['breakfast', 'lunch', 'dinner'];
   if (p.age != null && !p.lifeStage) merged.lifeStage = lifeStageFromAge(merged.age);
-  // Minors never get numeric targets.
-  if ((merged.age != null && merged.age < 18) || merged.lifeStage === 'teen' || merged.lifeStage === 'child') merged.showNumbers = false;
   if (!merged.slotMaxTime || typeof merged.slotMaxTime !== 'object') merged.slotMaxTime = {};
   return merged;
 }
@@ -125,7 +125,7 @@ export function validateData(raw: unknown): PersistedData {
     favorites: Array.isArray(d.favorites) ? d.favorites.filter((f) => typeof f === 'string' && getRecipe(f)) : [],
     pantry: Array.isArray(d.pantry) ? d.pantry.filter((x) => x && typeof x.name === 'string' && Number.isFinite(x.qty)) : [],
     grocery: { ...base.grocery, ...(d.grocery ?? {}) },
-    settings: { ...base.settings, ...(d.settings ?? {}) },
+    settings: { theme: d.settings?.theme ?? base.settings.theme, units: d.settings?.units ?? base.settings.units },
   };
 }
 
@@ -159,19 +159,18 @@ export const useStore = create<AppState>()(
 
         completeOnboarding: (p) => {
           const profile = sanitizeProfile(p);
-          set({ profile, onboarded: true, isDemo: false, grocery: { ...EMPTY_GROCERY, custom: [] }, settings: { ...get().settings, currency: profile.currency } });
+          set({ profile, onboarded: true, isDemo: false, grocery: { ...EMPTY_GROCERY, custom: [] } });
           set({ plan: generatePlan(profile, { favorites: get().favorites, pantry: get().pantry }) });
         },
         loadDemo: () => {
           const profile = sanitizeProfile(DEMO_PROFILE);
           const favorites = ['s-energy-bites', 'l-chicken-burrito-bowl', 'd-turkey-bolognese'];
-          set({ ...initialData(), profile, onboarded: true, isDemo: true, favorites, settings: { ...get().settings, currency: 'CAD' } });
+          set({ ...initialData(), profile, onboarded: true, isDemo: true, favorites, settings: get().settings });
           set({ plan: generatePlan(profile, { seed: 20261119, favorites }) });
         },
         updateProfile: (patch, regenerate = false) => {
           const profile = sanitizeProfile({ ...get().profile, ...patch });
           set({ profile });
-          if (patch.currency) set({ settings: { ...get().settings, currency: patch.currency } });
           if (regenerate) set({ plan: gen() });
           else if (get().plan) withPlan(() => undefined);
         },
@@ -241,7 +240,6 @@ export const useStore = create<AppState>()(
 
         updateSettings: (patch) => {
           set({ settings: { ...get().settings, ...patch } });
-          if (patch.currency) set({ profile: { ...get().profile, currency: patch.currency } });
         },
 
         runCommand: (input) => {

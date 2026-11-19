@@ -1,7 +1,6 @@
 import { Check, ChevronDown, ClipboardCopy, Download, Info, Package, Pencil, Plus, Printer, RotateCcw, ShoppingBasket, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { getIngredient } from '../data/ingredients';
-import { toCad } from '../engine/cost';
 import { AISLES, type GroceryItem } from '../engine/grocery';
 import { formatShopping } from '../engine/units';
 import { Empty, Notice, PageHeader, Progress, Segmented, cx } from '../components/ui';
@@ -29,7 +28,7 @@ export default function Grocery() {
     return AISLES.map((a) => [a, visible.filter((i) => i.aisle === a)] as const).filter(([, l]) => l.length);
   }, [visible, group]);
 
-  const budgetCad = profile.weeklyBudget ? toCad(profile.weeklyBudget, profile.currency) : null;
+  const budgetCad = profile.weeklyBudget ? profile.weeklyBudget : null;
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2200); };
 
   const asText = () => {
@@ -43,7 +42,7 @@ export default function Grocery() {
       c.forEach((i) => lines.push(`${i.checked ? '[x]' : '[ ]'} ${i.name}${i.qty ? ` — ${i.qty}` : ''}`));
       lines.push('');
     }
-    lines.push(`Estimated total: ${fmt(summary.total)} (estimate only)`);
+    lines.push(`Food used: ${fmt(summary.total)} · Checkout in whole packages: ${fmt(summary.checkout)} (CAD estimates)`);
     return lines.join('\n');
   };
   const download = (name: string, content: string, type: string) => {
@@ -54,8 +53,8 @@ export default function Grocery() {
   };
   const csv = () => {
     const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const rows = [['Category', 'Item', 'Quantity', 'Estimated cost', 'Purchased', 'Used in'].map(esc).join(',')];
-    toBuy.forEach((i) => rows.push([i.aisle, i.name, formatShopping(i.toBuy, i.dim, getIngredient(i.ingredientId), settings.units), fmt(i.cost), i.status === 'done' ? 'yes' : 'no', i.sources.map((s) => s.label).join('; ')].map(esc).join(',')));
+    const rows = [['Category', 'Item', 'Quantity', 'Estimated cost (CAD, whole packages)', 'Purchased', 'Used in'].map(esc).join(',')];
+    toBuy.forEach((i) => rows.push([i.aisle, i.name, formatShopping(i.toBuy, i.dim, getIngredient(i.ingredientId), settings.units), fmt(i.packCost), i.status === 'done' ? 'yes' : 'no', i.sources.map((s) => s.label).join('; ')].map(esc).join(',')));
     grocery.custom.forEach((i) => rows.push([i.aisle, i.name, i.qty, '', i.checked ? 'yes' : 'no', 'custom'].map(esc).join(',')));
     return rows.join('\n');
   };
@@ -133,8 +132,12 @@ export default function Grocery() {
             <p className="mt-1 font-display text-3xl font-semibold">{summary.done}<span className="text-lg muted"> / {summary.count}</span></p>
             <div className="mt-3"><Progress value={summary.progress} label="Shopping progress" /></div>
             <div className="mt-5 flex items-baseline justify-between">
-              <span className="text-sm">Estimated total</span>
+              <span className="text-sm">Food used this week</span>
               <span className="font-display text-xl font-semibold">{fmt(summary.total)}</span>
+            </div>
+            <div className="mt-1 flex items-baseline justify-between text-sm">
+              <span className="muted" title="If you buy every remaining item new, in typical package sizes">Checkout, whole packages</span>
+              <span className="tabular-nums">{fmt(summary.checkout)}</span>
             </div>
             {budgetCad != null && (
               <>
@@ -149,7 +152,7 @@ export default function Grocery() {
               <summary className="cursor-pointer select-none text-xs font-medium muted">Cost by category</summary>
               <ul className="mt-2 space-y-1">{Object.entries(summary.byAisle).sort((a, b) => b[1] - a[1]).map(([a, v]) => <li key={a} className="flex justify-between text-xs"><span>{a}</span><span className="tabular-nums">{fmt(v)}</span></li>)}</ul>
             </details>
-            <p className="hint mt-4 flex gap-1.5"><Info size={13} className="mt-0.5 shrink-0" />Prices are rough estimates based on average Canadian grocery prices, proportional to the amount used. Actual totals depend on your store and package sizes.</p>
+            <p className="hint mt-4 flex gap-1.5"><Info size={13} className="mt-0.5 shrink-0" />All prices are rough estimates in Canadian dollars. “Food used” counts only what this week's recipes use; the checkout figure assumes you buy every item new in typical package sizes, so staples you already own (spices, oils) make it look higher. Add those to your pantry to remove them.</p>
           </div>
         </aside>
       </div>
@@ -191,7 +194,7 @@ function GroceryRow({ item: i }: { item: GroceryItem }) {
         ) : (
           <div className="text-right">
             <span className="block text-sm font-semibold tabular-nums">{formatShopping(i.toBuy, i.dim, ing, settings.units)}</span>
-            <span className="block text-[11px] muted tabular-nums">≈ {fmt(i.cost)}</span>
+            <span className="block text-[11px] muted tabular-nums">{i.packSize ? `${i.packs} × ${formatShopping(i.packSize, i.dim, ing, settings.units)} pack${i.packs > 1 ? 's' : ''} · ≈ ${fmt(i.packCost)}` : `≈ ${fmt(i.cost)}`}</span>
           </div>
         )}
         <ChevronDown size={15} className={cx('no-print hidden shrink-0 transition sm:block muted', open && 'rotate-180')} />

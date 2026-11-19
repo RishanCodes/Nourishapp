@@ -153,7 +153,6 @@ export interface Profile {
   leftovers: 'love' | 'ok' | 'avoid';
   slots: SlotId[];
   weeklyBudget: number | null;
-  currency: string;
   stores: string;
   priority: 'savings' | 'convenience' | 'variety';
   portableLunch: boolean;
@@ -227,6 +226,4 @@ export interface GroceryState {
 export interface Settings {
   theme: 'light' | 'dark' | 'system';
   units: 'metric' | 'imperial';
-  currency: string;
-  notifications: boolean;
 }

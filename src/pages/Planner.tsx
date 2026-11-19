@@ -6,7 +6,8 @@ import { useMemo, useState } from 'react';
 import { INGREDIENTS, getIngredient } from '../data/ingredients';
 import { getRecipe } from '../data/recipes';
 import { recipeCostPerServing } from '../engine/cost';
-import { checkRecipeDiet } from '../engine/diet';
+import { checkIngredient, checkRecipeDiet } from '../engine/diet';
+import { dayNutrition, fmtKcal, mealNutrition } from '../engine/mealNutrition';
 import { DAYS, DAYS_SHORT, SLOT_LABEL, SLOT_ORDER, alternatives, dayContext, leftoverServings, weekdayOf } from '../engine/planner';
 import { UNITS } from '../engine/units';
 import { CommandBar } from '../components/CommandBar';
@@ -125,9 +126,16 @@ interface Handlers { onSwap: (t: Target) => void; onMove: (t: Target) => void; o
 function DayTitle({ day, compact }: { day: number; compact?: boolean }) {
   const profile = useStore((s) => s.profile);
   const ctx = dayContext(profile, day as Weekday);
+  const plan = useStore((s) => s.plan);
+  const totals = profile.showNumbers && plan ? dayNutrition(plan.days[day], profile) : null;
   return (
     <div className="min-w-0">
       <h3 className={cx('font-display font-semibold', compact ? 'text-base' : 'text-xl')}>{DAYS[day]}</h3>
+      {totals && totals.total.kcal > 0 && (
+        <p className="text-xs tabular-nums muted" title="Approximate totals of what's planned for you this day — information, not a target">
+          ≈ {fmtKcal(totals.total.kcal)} kcal · {Math.round(totals.total.protein)} g protein{compact ? '' : ` · ${Math.round(totals.total.carbs)} g carbs · ${Math.round(totals.total.fat)} g fat`}{totals.missing ? ` · ${totals.missing} meal${totals.missing > 1 ? 's' : ''} without data` : ''}
+        </p>
+      )}
       <div className="mt-0.5 flex flex-wrap gap-1.5">
         {ctx.sessions.map((s, i) => (
           <span key={i} className={cx('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium', s.kind === 'game' ? 'bg-clay-100 text-clay-600 dark:bg-clay-500/15 dark:text-clay-300' : 'bg-sage-100 text-sage-800 dark:bg-sage-500/15 dark:text-sage-200')}>
@@ -166,7 +174,10 @@ function useMealInfo(day: number, slot: SlotId) {
 
 function MealCard({ day, slot, onSwap, onMove, onCustom, onOpen }: { day: number; slot: SlotId } & Handlers) {
   const { meal, recipe, extra, source, cost } = useMealInfo(day, slot);
-  const { toggleLock, togglePrepared, setServings, removeMeal, toggleFavorite, favorites } = useStore();
+  const { toggleLock, togglePrepared, setServings, removeMeal, toggleFavorite, favorites, profile } = useStore();
+  const showNumbers = profile.showNumbers;
+  const nutrition = meal ? mealNutrition(meal, profile) : null;
+  const conflicts = meal?.custom ? meal.custom.ingredients.map((ri) => checkIngredient(ri, profile)).filter((c) => !c.ok).map((c) => c.reason!) : [];
   const fmt = useMoney();
   const [menu, setMenu] = useState(false);
   const t = { day, slot };
@@ -211,6 +222,13 @@ function MealCard({ day, slot, onSwap, onMove, onCustom, onOpen }: { day: number
         {recipe && <DietBadges recipe={recipe} max={2} />}
         {recipe?.tags.slice(0, 2).map((x) => <span key={x} className="tag">{tagLabel(x)}</span>)}
       </div>
+      {showNumbers && nutrition && (
+        <p className="mt-2 text-xs tabular-nums" aria-label="Approximate nutrition for your portion">
+          <span className="font-semibold">≈ {fmtKcal(nutrition.kcal)} kcal</span>
+          <span className="muted"> · {Math.round(nutrition.protein)} g protein · {Math.round(nutrition.carbs)} g carbs · {Math.round(nutrition.fat)} g fat</span>
+        </p>
+      )}
+      {conflicts.length > 0 && <p className="mt-2 flex gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-400/10 dark:text-amber-100"><TriangleAlert size={13} className="mt-0.5 shrink-0" />Conflicts with your profile: {conflicts.join('; ')}</p>}
       {extra > 0 && <p className="mt-2 rounded-lg bg-sand-50 px-2.5 py-1.5 text-xs dark:bg-white/5">Cook {meal.servings + extra} servings — {extra} saved for leftovers.</p>}
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-sand-200 pt-3 dark:border-white/5">
@@ -326,7 +344,9 @@ function MoveDialog({ target, onClose }: { target: Target; onClose: () => void }
 
 function CustomMealDialog({ target, onClose }: { target: Target; onClose: () => void }) {
   const addCustomMeal = useStore((s) => s.addCustomMeal);
-  const eaters = useStore((s) => s.profile.eatersPerMeal);
+  const profile = useStore((s) => s.profile);
+  const eaters = profile.eatersPerMeal;
+  const [blocked, setBlocked] = useState('');
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [servings, setServings] = useState(eaters);
@@ -336,6 +356,9 @@ function CustomMealDialog({ target, onClose }: { target: Target; onClose: () => 
   const [unit, setUnit] = useState<Unit>('g');
   const addItem = () => {
     if (!pick || !(qty > 0)) return;
+    const check = checkIngredient({ id: pick, qty, unit }, profile);
+    if (!check.ok) { setBlocked(`Not added: ${check.reason}.`); return; }
+    setBlocked('');
     setItems([...items, { id: pick, qty, unit }]);
     setPick('');
   };
@@ -358,13 +381,14 @@ function CustomMealDialog({ target, onClose }: { target: Target; onClose: () => 
             <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as Unit)} aria-label="Unit">{UNITS.map((u) => <option key={u}>{u}</option>)}</select>
             <button className="btn-secondary px-3" onClick={addItem} disabled={!pick} aria-label="Add ingredient"><Plus size={16} /></button>
           </div>
+          {blocked && <p className="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">{blocked}</p>}
           {items.length > 0 && (
             <ul className="mt-2 divide-y divide-sand-200 text-sm dark:divide-white/5">
               {items.map((it, i) => <li key={i} className="flex justify-between py-1.5"><span>{getIngredient(it.id)?.name}</span><span className="flex items-center gap-2">{it.qty} {it.unit}<button className="icon-btn h-7 w-7" aria-label="Remove" onClick={() => setItems(items.filter((_, j) => j !== i))}><Trash2 size={13} /></button></span></li>)}
             </ul>
           )}
         </div>
-        <p className="hint">Custom meals are locked automatically so regeneration won't replace them. They are not checked against your allergy list — review ingredients yourself.</p>
+        <p className="hint">Custom meals are locked automatically so regeneration won't replace them. Ingredients you pick are checked against your allergies and diet; anything typed into the name or notes isn't, so review those yourself.</p>
       </div>
     </Dialog>
   );

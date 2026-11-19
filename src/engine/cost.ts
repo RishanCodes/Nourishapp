@@ -24,18 +24,7 @@ export function recipeCostPerServing(recipe: Recipe, omit: string[] = []): numbe
   return total / recipe.servings;
 }
 
-/** Rough display conversion from CAD reference prices. Approximate only. */
-export const CURRENCY_RATE: Record<string, number> = { CAD: 1, USD: 0.73, EUR: 0.67, GBP: 0.57, AUD: 1.1, INR: 61, MXN: 13.5 };
-export const CURRENCY_SYMBOL: Record<string, string> = { CAD: 'CA$', USD: 'US$', EUR: '€', GBP: '£', AUD: 'A$', INR: '₹', MXN: 'MX$' };
-
-export function money(cad: number, currency: string): string {
-  const rate = CURRENCY_RATE[currency] ?? 1;
-  const v = cad * rate;
-  const sym = CURRENCY_SYMBOL[currency] ?? currency + ' ';
-  return `${sym}${v >= 100 ? Math.round(v) : v.toFixed(2)}`;
-}
-
-/** Convert a user-entered budget in their currency into CAD for comparison. */
-export function toCad(amount: number, currency: string): number {
-  return amount / (CURRENCY_RATE[currency] ?? 1);
+/** All prices in NOURISH are Canadian dollars. */
+export function money(cad: number): string {
+  return `$${cad >= 100 ? Math.round(cad) : cad.toFixed(2)}`;
 }

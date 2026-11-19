@@ -1,8 +1,8 @@
 import { ArrowRight, Check, ChefHat, Clock, Droplets, Dumbbell, Heart, Lightbulb, ShoppingBasket, Sparkles, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import { getRecipe } from '../data/recipes';
-import { toCad } from '../engine/cost';
 import { adultEstimate, guidance } from '../engine/nutrition';
+import { dayNutrition, fmtKcal } from '../engine/mealNutrition';
 import { DAYS, DAYS_SHORT, SLOT_LABEL, SLOT_ORDER, SLOT_TIME, dayContext, leftoverServings, toMin, weekdayOf } from '../engine/planner';
 import { CommandBar } from '../components/CommandBar';
 import { RecipeDetail, RecipeVisual, timeLabel } from '../components/RecipeBits';
@@ -34,7 +34,7 @@ export default function Dashboard() {
   };
   const upcoming = todays.find((x) => !x.m!.prepared && toMin(slotTime(x.s)) + 45 >= minutes) ?? null;
   const upRecipe = upcoming ? getRecipe(upcoming.m!.recipeId) : undefined;
-  const budget = profile.weeklyBudget ? toCad(profile.weeklyBudget, profile.currency) : null;
+  const budget = profile.weeklyBudget ? profile.weeklyBudget : null;
   const estimate = adultEstimate(profile);
   const tips = guidance(profile);
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
@@ -179,6 +179,21 @@ export default function Dashboard() {
         <div className="mt-3 grid gap-x-8 gap-y-2 text-sm leading-relaxed md:grid-cols-2">
           {[...plan.explanation.slice(0, 2), ...tips.slice(0, 3)].map((t) => <p key={t} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-sage-400" />{t}</p>)}
         </div>
+        {profile.showNumbers && (() => {
+          const { total, missing } = dayNutrition(plan.days[today], profile);
+          if (!total.kcal) return null;
+          return (
+            <div className="mt-4 rounded-xl bg-sand-50 p-4 text-sm dark:bg-white/5">
+              <p className="font-medium">What's planned for you today</p>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-center sm:grid-cols-5">
+                {([['≈ kcal', fmtKcal(total.kcal)], ['Protein', `${Math.round(total.protein)} g`], ['Carbs', `${Math.round(total.carbs)} g`], ['Fat', `${Math.round(total.fat)} g`], ['Fibre', `${Math.round(total.fiber)} g`]] as const).map(([l, v]) => (
+                  <div key={l} className="rounded-lg bg-white py-2 dark:bg-white/5"><div className="font-semibold tabular-nums">{v}</div><div className="text-[11px] muted">{l}</div></div>
+                ))}
+              </div>
+              <p className="hint mt-2">Approximate totals of your planned portions{missing ? ` (${missing} custom meal${missing > 1 ? 's' : ''} without ingredient data not included)` : ''}. This describes what you're eating — it isn't a target{profile.isAthlete ? '; on hard training days, eating more is normal' : ''}.</p>
+            </div>
+          );
+        })()}
         {estimate && (
           <div className="mt-4 rounded-xl bg-sand-50 p-4 text-sm dark:bg-white/5">
             <p className="font-medium">Approximate daily needs (optional estimate)</p>

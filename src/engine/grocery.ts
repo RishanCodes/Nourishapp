@@ -1,4 +1,5 @@
 import { getIngredient } from '../data/ingredients';
+import { PACK_SIZE } from '../data/packs';
 import { getRecipe } from '../data/recipes';
 import type { Aisle, Dimension, GroceryState, PantryItem, Profile, SlotId, WeekPlan } from '../types';
 import { ingredientCost } from './cost';
@@ -32,6 +33,11 @@ export interface GroceryItem {
   /** Purchase status relative to the amount currently needed. */
   status: 'todo' | 'done' | 'partial';
   boughtQty: number;
+  /** Typical retail package size (base units) and how many to buy; null when sold loose. */
+  packSize: number | null;
+  packs: number;
+  /** Cost if bought as whole packages (CAD). */
+  packCost: number;
 }
 
 export const itemKey = (ingredientId: string, dim: Dimension) => `${ingredientId}|${dim}`;
@@ -113,13 +119,27 @@ export function buildGroceryList(plan: WeekPlan | null, profile: Profile, pantry
       required: e.qty, fromPantry, toBuy, overridden,
       cost: ingredientCost(ing, billable, e.dim), sources: e.sources,
       labelCheck: !!ing.labelCheck, status, boughtQty: bought ?? 0,
+      ...packInfo(e.ingredientId, e.dim, toBuy),
     });
   }
   return items.sort((a, b) => AISLES.indexOf(a.aisle) - AISLES.indexOf(b.aisle) || a.name.localeCompare(b.name));
 }
 
+function packInfo(ingredientId: string, dim: Dimension, toBuy: number): Pick<GroceryItem, 'packSize' | 'packs' | 'packCost'> {
+  const ing = getIngredient(ingredientId)!;
+  const size = PACK_SIZE[ingredientId];
+  if (!size || dim !== ing.dim || toBuy <= EPS) {
+    const billable = dim === 'count' ? Math.ceil(toBuy - EPS) : toBuy;
+    return { packSize: null, packs: 0, packCost: ingredientCost(ing, billable, dim) };
+  }
+  const packs = Math.max(1, Math.ceil(toBuy / size - 1e-3));
+  return { packSize: size, packs, packCost: ingredientCost(ing, packs * size, dim) };
+}
+
 export interface GrocerySummary {
-  total: number; // CAD of items still needing purchase (toBuy > 0)
+  total: number; // CAD of items still needing purchase (toBuy > 0), proportional to the amount used
+  /** CAD if every remaining item is bought as whole retail packages. */
+  checkout: number;
   byAisle: Record<string, number>;
   count: number;
   done: number;
@@ -131,7 +151,8 @@ export function summarize(items: GroceryItem[], custom: GroceryState['custom']):
   const byAisle: Record<string, number> = {};
   for (const i of buy) byAisle[i.aisle] = (byAisle[i.aisle] ?? 0) + i.cost;
   const total = buy.reduce((s, i) => s + i.cost, 0);
+  const checkout = buy.reduce((s, i) => s + i.packCost, 0);
   const count = buy.length + custom.length;
   const done = buy.filter((i) => i.status === 'done').length + custom.filter((c) => c.checked).length;
-  return { total, byAisle, count, done, progress: count ? done / count : 0 };
+  return { total, checkout, byAisle, count, done, progress: count ? done / count : 0 };
 }

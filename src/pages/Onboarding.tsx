@@ -115,14 +115,14 @@ function Review({ p }: { p: Profile }) {
     ['Cuisines', p.cuisines.join(', ') || 'A mix of everything'],
     ['Cooking', `Up to ${p.maxPrep} min prep · ${p.maxCook} min cooking · ${p.equipment.join(', ') || 'no equipment'}`],
     ['Meals', p.slots.map((s) => SLOT_LABEL[s]).join(', ')],
-    ['Budget', p.weeklyBudget ? `${p.weeklyBudget} ${p.currency} / week (${p.priority})` : `Not set (${p.priority})`],
+    ['Budget', p.weeklyBudget ? `$${p.weeklyBudget} CAD / week (${p.priority})` : `Not set (${p.priority})`],
   ];
   return (
     <div className="space-y-4">
       <dl className="card divide-y divide-sand-200 dark:divide-white/5">
         {rows.map(([k, v]) => <div key={k} className="grid grid-cols-[7rem,1fr] gap-3 px-4 py-3 text-sm"><dt className="muted">{k}</dt><dd className="capitalize-first">{v}</dd></div>)}
       </dl>
-      {isMinor(p) && <p className="text-sm muted">Your plan will focus on regular, satisfying meals and training fuel — no calorie targets.</p>}
+      {isMinor(p) && <p className="text-sm muted">Your plan will focus on regular, satisfying meals and training fuel. There are no calorie targets, but you can see the nutrition numbers for every meal.</p>}
     </div>
   );
 }

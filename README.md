@@ -9,7 +9,7 @@ Everything runs in the browser. There's no account and no backend, and nothing i
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 36 unit tests (engine + persistence)
+npm test           # 39 unit tests (engine + persistence)
 npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build
 ```
@@ -33,7 +33,8 @@ src/
                            alternatives, explanations
     grocery.ts             Aggregation, serving scaling, leftover de-duplication, pantry subtraction
     nlp.ts                 Rule-based natural-language commands
-    cost.ts                Cost estimates & currency display
+    cost.ts                Cost estimates (Canadian dollars only)
+    mealNutrition.ts       Per-person meal and daily nutrition totals
   store/                   Zustand store persisted to localStorage, import/export validation
   components/, pages/      React + Tailwind UI (Dashboard, Planner, Recipes, Grocery, Pantry, Profile, Settings, Onboarding)
 ```
@@ -50,8 +51,8 @@ Locked meals are never changed by a regeneration or a natural-language command.
 
 ### Safety choices
 
-* People under 18 never see calorie or macro targets. The app doesn't offer weight-loss goals.
-* Adults can opt in to approximate estimates (Mifflin–St Jeor × activity factor, with g/kg protein ranges). These are shown as ranges and labelled approximate.
+* Anyone, including under-18s, can turn on **nutrition numbers**: calories, protein, carbs, fat and fibre for every meal, plus each day's planned totals for your own portion. These describe what's planned; they aren't targets. The demo teen has them on.
+* No restrictive targets for minors. The app doesn't offer weight-loss goals, and the optional *daily energy range* (Mifflin–St Jeor × activity factor) stays adults-only because that equation isn't designed for people who are still growing.
 * Packaged items that may hide allergens are flagged "label" on recipes and on the grocery list.
 * Health conditions add guidance and constraints but never medical nutrition therapy.
 
@@ -77,9 +78,8 @@ The UI was also driven end to end with Playwright (desktop and a 390 px mobile v
 
 ## Known limitations
 
-* **Prices** are rough Canadian averages, proportional to the amount used rather than whole packages. Other currencies use a fixed approximate conversion.
+* **Prices** are in Canadian dollars only, using rough Canadian averages. The grocery list shows two figures: food used this week (proportional) and a checkout estimate in typical whole-package sizes. The checkout figure counts staples you may already own unless you add them to the pantry.
 * **Nutrition** is calculated from generic per-100 g reference values (USDA-style) for each ingredient. It's approximate and ignores brand differences.
 * **Natural-language box** is rule-based. It understands a fixed set of request types (see the examples in the app) and says so when it can't interpret something. It doesn't use an AI service.
-* **Meal reminders** use the browser Notification API and only fire while the app is open.
-* **Custom meals** you add aren't checked against your allergy list.
+* **Custom meals:** ingredients you pick are checked against your allergies and diet; free text in the name or notes isn't.
 * **Storage:** data lives in this browser's `localStorage`. It isn't encrypted or synced between devices. Use Settings → Export to make a backup.

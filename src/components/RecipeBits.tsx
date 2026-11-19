@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { getIngredient } from '../data/ingredients';
 import { ALLERGEN_LABEL, DIET_LABEL, checkPractical, checkRecipeDiet, recipeAllergens, recipeDiets } from '../engine/diet';
 import { recipeCostPerServing } from '../engine/cost';
-import { foodGroups, isMinor, recipeNutrition } from '../engine/nutrition';
+import { foodGroups, recipeNutrition } from '../engine/nutrition';
 import { DAYS, SLOT_LABEL, SLOT_ORDER } from '../engine/planner';
 import { formatRecipeQty } from '../engine/units';
 import { useMoney } from '../lib/hooks';
@@ -60,7 +60,6 @@ export function RecipeDetail({ recipe, onClose, servings: initialServings, onAdd
   if (!recipe || !info) return null;
   const factor = s / recipe.servings;
   const fav = favorites.includes(recipe.id);
-  const minor = isMinor(profile);
   const close = () => { setServings(null); onClose(); };
 
   return (
@@ -148,17 +147,17 @@ export function RecipeDetail({ recipe, onClose, servings: initialServings, onAdd
             <div className="mb-2 flex flex-wrap gap-1.5">
               {info.groups.map((g) => <span key={g} className="tag capitalize">{g}</span>)}
             </div>
-            {profile.showNumbers && !minor ? (
+            {profile.showNumbers ? (
               <>
                 <div className="grid grid-cols-4 gap-2 text-center text-sm">
                   {([['≈ kcal', info.nutrition.kcal], ['Protein', `${info.nutrition.protein} g`], ['Carbs', `${info.nutrition.carbs} g`], ['Fat', `${info.nutrition.fat} g`]] as const).map(([l, v]) => (
                     <div key={l} className="rounded-xl bg-sand-50 py-2 dark:bg-white/5"><div className="font-semibold tabular-nums">{v}</div><div className="text-[11px] muted">{l}</div></div>
                   ))}
                 </div>
-                <p className="hint mt-2">Approximate, per serving. Calculated from generic USDA-style reference values for each ingredient; brands and portions vary.</p>
+                <p className="hint mt-2">Approximate, per serving ({info.nutrition.fiber} g fibre). Calculated from generic USDA-style reference values for each ingredient; brands and portions vary.</p>
               </>
             ) : (
-              <p className="hint">{minor ? 'Food groups are shown instead of numbers for growing users — eat to appetite.' : 'Turn on approximate nutrition estimates in My Profile to see calories and macros.'}</p>
+              <p className="hint">Turn on nutrition numbers in My Profile to see calories, protein, carbs and fat.</p>
             )}
           </div>
         </section>

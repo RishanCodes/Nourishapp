@@ -3,7 +3,7 @@ import { RECIPES, getRecipe } from '../data/recipes';
 import type {
   Cuisine, DayPlan, PantryItem, PlannedMeal, Profile, Recipe, RecipeTag, SlotId, TrainingSession, WeekPlan, Weekday,
 } from '../types';
-import { recipeCostPerServing, toCad } from './cost';
+import { recipeCostPerServing } from './cost';
 import { checkRecipeDiet, diagnoseSlot, isEligible, profileConflicts, termMatchesRecipe } from './diet';
 import { isMinor } from './nutrition';
 
@@ -220,7 +220,7 @@ export function budgetTargetPerServing(p: Profile): number | null {
   const meals = Math.max(1, p.slots.length) * 7;
   const snackShare = p.slots.filter((s) => s.includes('Snack')).length * 0.4;
   const weighted = (p.slots.length - p.slots.filter((s) => s.includes('Snack')).length + snackShare) * 7;
-  return toCad(p.weeklyBudget, p.currency) / Math.max(1, (weighted || meals) * Math.max(1, p.eatersPerMeal));
+  return p.weeklyBudget / Math.max(1, (weighted || meals) * Math.max(1, p.eatersPerMeal));
 }
 
 export function makeScoreCtx(p: Profile, days: DayPlan[], opts: GenerateOptions): ScoreCtx {

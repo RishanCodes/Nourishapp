@@ -15,8 +15,7 @@ export function useGrocery() {
 }
 
 export function useMoney() {
-  const currency = useStore((s) => s.settings.currency);
-  return (cad: number) => money(cad, currency);
+  return money;
 }
 
 export function useThemeEffect() {

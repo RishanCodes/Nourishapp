@@ -3,9 +3,10 @@ import { INGREDIENT_MAP } from '../data/ingredients';
 import { RECIPES, getRecipe } from '../data/recipes';
 import { DEFAULT_PROFILE, DEMO_PROFILE, EMPTY_GROCERY } from '../store/defaults';
 import type { PlannedMeal, Profile, WeekPlan } from '../types';
-import { checkRecipeDiet, diagnoseSlot, recipeAllergens, recipeFlags } from './diet';
+import { checkIngredient, checkRecipeDiet, diagnoseSlot, recipeAllergens, recipeFlags } from './diet';
 import { aggregatePlan, buildGroceryList, itemKey } from './grocery';
 import { interpret } from './nlp';
+import { dayNutrition, mealNutrition } from './mealNutrition';
 import { adultEstimate, recipeNutrition } from './nutrition';
 import { SLOT_ORDER, dayContext, generatePlan, leftoverServings } from './planner';
 import { formatShopping, toIngredientBase } from './units';
@@ -97,6 +98,11 @@ describe('dietary constraints', () => {
     const plan = generatePlan(p, { seed: 1 });
     expect(plan.warnings.some((w) => /No dinner recipes fit/.test(w))).toBe(true);
   });
+  it('flags allergens in custom-meal ingredients', () => {
+    expect(checkIngredient({ id: 'peanut_butter', qty: 1, unit: 'tbsp' }, P({ allergies: ['peanut'] })).ok).toBe(false);
+    expect(checkIngredient({ id: 'chicken_breast', qty: 100, unit: 'g' }, P({ diet: ['vegetarian'] })).ok).toBe(false);
+    expect(checkIngredient({ id: 'banana', qty: 1, unit: 'pc' }, P({ allergies: ['peanut'] })).ok).toBe(true);
+  });
   it('derives allergens and flags from ingredients', () => {
     expect(recipeAllergens(getRecipe('s-energy-bites')!)).toContain('peanut');
     expect(recipeFlags(getRecipe('d-honey-garlic-salmon')!)).toEqual(expect.arrayContaining(['fish', 'honey']));
@@ -139,8 +145,16 @@ describe('personalisation', () => {
     const plan = generatePlan(p, { seed: 11 });
     for (const r of recipesIn(plan)) { expect(r.prep).toBeLessThanOrEqual(10); expect(r.cook).toBeLessThanOrEqual(15); }
   });
-  it('youth profiles never receive numeric calorie targets', () => {
+  it('youth profiles see meal nutrition but no daily calorie target', () => {
     expect(adultEstimate({ ...DEMO_PROFILE, showNumbers: true })).toBeNull();
+    const plan = generatePlan(DEMO_PROFILE, { seed: 2 });
+    const { total } = dayNutrition(plan.days[0], DEMO_PROFILE);
+    expect(total.kcal).toBeGreaterThan(1200);
+    expect(total.protein).toBeGreaterThan(40);
+    // a 1.5-serving recovery dinner counts 1.5 portions for the person
+    const dinner = plan.days[0].dinner!;
+    const per = recipeNutrition(getRecipe(dinner.recipeId)!);
+    expect(mealNutrition(dinner, DEMO_PROFILE)!.kcal).toBeCloseTo(per.kcal * dinner.servings, 0);
     const adult = P({ age: 30, sex: 'female', heightCm: 165, weightKg: 60, showNumbers: true, activity: 'moderate' });
     const est = adultEstimate(adult)!;
     expect(est.kcalLow).toBeGreaterThan(1500);
@@ -203,6 +217,8 @@ describe('grocery aggregation', () => {
     const chia = aggregatePlan(plan, P()).get(itemKey('chia_seeds', 'mass'))!;
     expect(chia.qty).toBeCloseTo(24);
     expect(formatShopping(7.5, 'volume', undefined)).toBe('1 ½ tsp');
+    expect(formatShopping(4.4, 'volume', undefined)).toBe('1 tsp'); // rounds up to a usable spoon size
+    expect(formatShopping(43.8, 'volume', undefined)).toBe('3 tbsp');
     expect(formatShopping(45, 'volume', undefined)).toBe('3 tbsp');
   });
   it('does not double-count planned leftovers', () => {
@@ -225,6 +241,14 @@ describe('grocery aggregation', () => {
     expect(rice.required).toBeCloseTo(250);
     expect(rice.fromPantry).toBeCloseTo(200);
     expect(rice.toBuy).toBeCloseTo(50);
+  });
+  it('rounds purchases up to whole retail packages for the checkout estimate', () => {
+    const plan = withMeals([0, 'dinner', { recipeId: 'd-chana-masala', servings: 4 }]);
+    const rice = buildGroceryList(plan, P(), [], EMPTY_GROCERY).find((i) => i.ingredientId === 'basmati_rice')!;
+    expect(rice.packSize).toBe(2000);
+    expect(rice.packs).toBe(1);
+    expect(rice.packCost).toBeCloseTo(8); // $4/kg × 2 kg bag
+    expect(rice.cost).toBeCloseTo(1); // 250 g used
   });
   it('purchase checks are not carried over when more is needed later', () => {
     const plan = withMeals([0, 'dinner', { recipeId: 'd-chana-masala', servings: 4 }]);

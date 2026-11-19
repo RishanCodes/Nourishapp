@@ -30,6 +30,20 @@ export function recipeNutrition(recipe: Recipe, omit: string[] = []): Nutrition 
   };
 }
 
+/** Scale per-serving nutrition by a number of portions. */
+export function scaleNutrition(n: Nutrition, k: number): Nutrition {
+  return { kcal: n.kcal * k, protein: n.protein * k, carbs: n.carbs * k, fat: n.fat * k, fiber: n.fiber * k };
+}
+
+/** Approximate nutrition of a list of catalog ingredients (used for custom meals), per serving. */
+export function ingredientsNutrition(items: { id: string; qty: number; unit: Recipe['ingredients'][number]['unit'] }[]): Nutrition {
+  return recipeNutrition({ ingredients: items, servings: 1 } as unknown as Recipe);
+}
+
+export function addNutrition(a: Nutrition, b: Nutrition): Nutrition {
+  return { kcal: a.kcal + b.kcal, protein: a.protein + b.protein, carbs: a.carbs + b.carbs, fat: a.fat + b.fat, fiber: a.fiber + b.fiber };
+}
+
 export type FoodGroup = 'protein' | 'vegetable' | 'fruit' | 'grain' | 'dairy';
 export function foodGroups(recipe: Recipe): FoodGroup[] {
   const s = new Set<FoodGroup>();

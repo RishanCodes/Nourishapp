@@ -1,7 +1,6 @@
 import { Info, Plus, ShieldAlert, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ALLERGEN_LABEL, DIET_LABEL } from '../engine/diet';
-import { CURRENCY_RATE } from '../engine/cost';
 import { isMinor, lifeStageFromAge } from '../engine/nutrition';
 import { DAYS, DAYS_SHORT, SLOT_LABEL, SLOT_ORDER } from '../engine/planner';
 import type {
@@ -172,7 +171,7 @@ export function GoalsSection({ p, set }: SectionProps) {
   return (
     <div className="space-y-4">
       <ChipGroup options={Object.keys(GOAL_LABEL) as Goal[]} labels={GOAL_LABEL} value={p.goals} onChange={(v) => set({ goals: v })} />
-      {minor && <Notice tone="ok" icon={<Info size={16} />}>For growing users, NOURISH focuses on enough food, balanced meals, training fuel and recovery. It never sets calorie deficits, weight-loss targets or rigid macro numbers.</Notice>}
+      {minor && <Notice tone="ok" icon={<Info size={16} />}>For growing users, NOURISH focuses on enough food, balanced meals, training fuel and recovery. It never sets calorie deficits or weight-loss targets. You can still see the calories and macros in every meal (My Profile → Nutrition numbers).</Notice>}
     </div>
   );
 }
@@ -262,12 +261,9 @@ export function CookingSection({ p, set }: SectionProps) {
 export function BudgetSection({ p, set }: SectionProps) {
   return (
     <div className="space-y-5">
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Weekly grocery budget" hint="Optional. Used to favour cheaper recipes and compare estimates.">
-          <NumberInput value={p.weeklyBudget} min={1} max={100000} onChange={(v) => set({ weeklyBudget: v })} placeholder="e.g. 120" suffix={p.currency} />
-        </Field>
-        <Field label="Currency" hint="Prices are estimates converted from Canadian averages.">
-          <select className="input" value={p.currency} onChange={(e) => set({ currency: e.target.value })}>{Object.keys(CURRENCY_RATE).map((c) => <option key={c}>{c}</option>)}</select>
+      <div>
+        <Field label="Weekly grocery budget (CAD)" hint="Optional. Used to favour cheaper recipes and compare estimates.">
+          <NumberInput value={p.weeklyBudget} min={1} max={100000} onChange={(v) => set({ weeklyBudget: v })} placeholder="e.g. 120" suffix="CAD" />
         </Field>
       </div>
       <Field label="Preferred grocery stores" hint="Optional, for your own reference."><input className="input" value={p.stores} onChange={(e) => set({ stores: e.target.value })} placeholder="e.g. No Frills, local market" /></Field>
@@ -278,11 +274,15 @@ export function BudgetSection({ p, set }: SectionProps) {
 }
 
 export function NumbersSection({ p, set }: SectionProps) {
-  if (isMinor(p)) return <Notice tone="ok" icon={<Info size={16} />}>Numeric calorie and macronutrient targets are not shown for users under 18. NOURISH focuses on balanced meals, regular eating and training fuel instead.</Notice>;
+  const minor = isMinor(p);
   return (
     <div className="space-y-3">
-      <Toggle checked={p.showNumbers} onChange={(v) => set({ showNumbers: v })} label="Show approximate nutrition numbers" hint="Adds estimated calories and macros to recipes, plus an approximate daily energy range on the dashboard." />
-      {p.showNumbers && (!p.age || !p.heightCm || !p.weightKg || p.sex === 'unspecified') && <p className="hint">A daily estimate also needs age, height, weight and sex (in About you). Recipe numbers still appear.</p>}
+      <Toggle checked={p.showNumbers} onChange={(v) => set({ showNumbers: v })} label="Show nutrition numbers"
+        hint={minor
+          ? 'Shows calories, protein, carbs, fat and fibre for every meal, plus the totals of what’s planned each day.'
+          : 'Shows calories and macros for every meal, the totals of what’s planned each day, and an approximate daily energy range on the dashboard.'} />
+      {p.showNumbers && minor && <p className="hint">Numbers describe what’s in your meals — they aren’t targets. The daily energy-range estimate stays adults-only because the standard adult equation isn’t designed for bodies that are still growing.</p>}
+      {p.showNumbers && !minor && (!p.age || !p.heightCm || !p.weightKg || p.sex === 'unspecified') && <p className="hint">The daily range also needs age, height, weight and sex (in About you). Meal numbers still appear.</p>}
     </div>
   );
 }
