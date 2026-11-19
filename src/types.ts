@@ -138,6 +138,10 @@ export interface Profile {
   dislikedFoods: string[];
   avoidIngredients: string[];
   favoriteProteins: string[];
+  preferredFruits: string[];
+  preferredVegetables: string[];
+  preferredBreakfasts: string[];
+  favoriteSnacks: string[];
   cuisines: Cuisine[];
   spiceTolerance: 0 | 1 | 2 | 3;
   adventurous: 1 | 2 | 3;

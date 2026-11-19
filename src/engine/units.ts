@@ -95,8 +95,8 @@ export function formatShopping(qty: number, dim: Dimension, ing: Ingredient | un
     return `${Math.max(5, round(qty, qty < 100 ? 5 : 10))} g`;
   }
   // volume
-  if (qty < 15) return `${prettyNumber(Math.max(0.25, qty / 5))} tsp`;
-  if (qty < 60) return `${prettyNumber(qty / 15)} tbsp`;
+  if (qty < 15) return `${prettyNumber(Math.max(0.25, Math.ceil(qty / 5 * 4 - 1e-6) / 4))} tsp`;
+  if (qty < 60) return `${prettyNumber(Math.ceil(qty / 15 * 4 - 1e-6) / 4)} tbsp`;
   if (system === 'imperial') return `${prettyNumber(round(qty / 236.6, 0.25))} cups`;
   if (qty >= 1000) return `${trim(round(qty / 1000, 0.05))} L`;
   return `${round(qty, 10)} ml`;

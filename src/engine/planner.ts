@@ -137,7 +137,8 @@ export function scoreRecipe(r: Recipe, role: Role | undefined, ctx: ScoreCtx): {
   const add = (n: number, reason?: string) => { s += n; if (reason && n > 0) why.push(reason); };
 
   if (p.cuisines.includes(r.cuisine)) add(6, `${r.cuisine} is a cuisine you like`);
-  for (const f of p.favoriteFoods) if (termMatchesRecipe(f, r)) { add(5, `includes ${f}`); break; }
+  const likes = [...p.favoriteFoods, ...(p.preferredFruits ?? []), ...(p.preferredVegetables ?? []), ...(r.categories.includes('breakfast') ? p.preferredBreakfasts ?? [] : []), ...(r.categories.includes('snack') ? p.favoriteSnacks ?? [] : [])];
+  for (const f of likes) if (termMatchesRecipe(f, r)) { add(5, `includes ${f}`); break; }
   for (const f of p.favoriteProteins) if (termMatchesRecipe(f, r)) { add(4, `features ${f}`); break; }
   for (const f of p.dislikedFoods) if (termMatchesRecipe(f, r)) add(-40);
 

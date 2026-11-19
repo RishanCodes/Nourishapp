@@ -90,7 +90,7 @@ export function sanitizeProfile(p: Partial<Profile>): Profile {
   merged.maxPrep = num(merged.maxPrep, 1, 240) ?? DEFAULT_PROFILE.maxPrep;
   merged.maxCook = num(merged.maxCook, 0, 600) ?? DEFAULT_PROFILE.maxCook;
   merged.weeklyBudget = num(merged.weeklyBudget, 1, 100000);
-  for (const k of ['secondarySports', 'sessions', 'goals', 'diet', 'allergies', 'customAllergies', 'health', 'favoriteFoods', 'dislikedFoods', 'avoidIngredients', 'favoriteProteins', 'cuisines', 'equipment', 'slots', 'preferIngredients'] as const) {
+  for (const k of ['secondarySports', 'sessions', 'goals', 'diet', 'allergies', 'customAllergies', 'health', 'favoriteFoods', 'dislikedFoods', 'avoidIngredients', 'favoriteProteins', 'preferredFruits', 'preferredVegetables', 'preferredBreakfasts', 'favoriteSnacks', 'cuisines', 'equipment', 'slots', 'preferIngredients'] as const) {
     if (!Array.isArray(merged[k])) (merged as unknown as Record<string, unknown>)[k] = [...(DEFAULT_PROFILE[k] as unknown[])];
   }
   if (!merged.diet.length) merged.diet = ['omnivore'];
